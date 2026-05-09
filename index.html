@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Particle Morphing - Interactive Camera</title>
+    <title>3D Particle Morphing - Fully Responsive</title>
     <style>
         * {
             box-sizing: border-box;
@@ -15,7 +15,7 @@
             overflow: hidden;
             background-color: #030305;
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            touch-action: none; /* 禁用移动端浏览器的默认滚动/缩放行为，优化 3D 触控体验 */
+            touch-action: none; /* 禁用移动端浏览器的默认滚动/缩放行为 */
         }
 
         #webgl-container {
@@ -44,7 +44,8 @@
             letter-spacing: 1px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
-            pointer-events: none; /* 让鼠标穿透提示框，不影响拖拽 */
+            pointer-events: none;
+            white-space: nowrap; /* 防止文字在小屏幕上换行 */
         }
 
         #morphing-text {
@@ -140,6 +141,35 @@
         #color-3 { background: linear-gradient(135deg, #43e97b, #38f9d7); } 
         #color-4 { background: linear-gradient(135deg, #ff0844, #ffb199, #130cb7, #52e5e7); } 
 
+        /* ===== 新增：手机端专属自适应样式 ===== */
+        @media (max-width: 768px) {
+            #top-status {
+                top: 20px;
+                font-size: 12px;
+                padding: 8px 16px;
+            }
+            #morphing-text {
+                top: 60px;
+            }
+            #bottom-controls {
+                bottom: 25px;
+                gap: 10px;
+            }
+            #change-shape-btn {
+                padding: 10px 28px;
+                font-size: 15px;
+            }
+            #color-palettes {
+                padding: 10px 20px;
+                gap: 12px;
+            }
+            .color-btn {
+                width: 20px;
+                height: 20px;
+            }
+        }
+        /* =================================== */
+
     </style>
 </head>
 <body>
@@ -159,9 +189,7 @@
 
     <div id="webgl-container"></div>
 
-    <!-- 引入 Three.js 核心库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- 新增：引入 OrbitControls 轨道控制器 -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     
     <script>
@@ -169,7 +197,7 @@
         const SHAPES =['Sphere', 'Cube', 'Pyramid', 'Torus', 'Galaxy', 'Wave'];
         const RADIUS = 20;
 
-        let scene, camera, renderer, particles, starfield, controls; // 添加 controls 变量
+        let scene, camera, renderer, particles, starfield, controls; 
         let currentShapeIndex = 0;
         let isMorphing = false;
         
@@ -198,22 +226,26 @@
             scene.fog = new THREE.FogExp2(0x030305, 0.008); 
             
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 15, 60); // 设置初始相机位置
+            
+            // ===== 新增：响应式相机距离 =====
+            // 如果屏幕宽度小于 768px（手机端），将相机往后退到 100 的距离，否则电脑端保持 60
+            const isMobile = window.innerWidth < 768;
+            const cameraZ = isMobile ? 100 : 60;
+            camera.position.set(0, 15, cameraZ);
+            // ===============================
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
-            // ===== 新增：初始化 OrbitControls =====
             controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true; // 开启阻尼效果，让滑动有惯性，更顺滑
-            controls.dampingFactor = 0.05; // 阻尼系数
-            controls.enablePan = false;    // 禁用右键平移，防止模型跑出屏幕
-            controls.minDistance = 20;     // 限制缩放的最近距离
-            controls.maxDistance = 150;    // 限制缩放的最远距离
-            // ===================================
-
+            controls.enableDamping = true; 
+            controls.dampingFactor = 0.05; 
+            controls.enablePan = false;    
+            controls.minDistance = 20;     
+            controls.maxDistance = 200;    // 放宽最大缩放距离，适应手机端
+            
             createStarfield();
 
             const geometry = new THREE.BufferGeometry();
@@ -438,13 +470,11 @@
             requestAnimationFrame(animate);
             time += 0.02;
 
-            // 更新轨道控制器 (阻尼效果需要)
             controls.update();
 
             const posAttribute = particles.geometry.attributes.position;
             const colAttribute = particles.geometry.attributes.color;
 
-            // 保持粒子的自转，让画面有生命力
             particles.rotation.y += 0.002;
             particles.rotation.z = Math.sin(time * 0.2) * 0.05;
             
@@ -471,8 +501,6 @@
 
             posAttribute.needsUpdate = true;
             colAttribute.needsUpdate = true;
-
-            // 移除了原有的强制视角锁定代码 (camera.lookAt 等)，交给 OrbitControls 管理
 
             renderer.render(scene, camera);
         }
